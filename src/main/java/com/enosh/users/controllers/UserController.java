@@ -1,7 +1,10 @@
 package com.enosh.users.controllers;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -27,7 +30,7 @@ public class UserController {
 	private final UserRepository userRepository;
 
 	private final String USER_KEY = "user";
-	
+	private final String NOT_LOGGED_IN_MESSAGE = "Must be loggedin in order to continue";		
 	
 	public UserController(UserRepository userRepository) {
 		this.userRepository = userRepository;
@@ -37,11 +40,46 @@ public class UserController {
 		return request.getSession().getAttribute(USER_KEY) != null;
 	}
 	
+	@GetMapping("/getAll")
+	public ResponseEntity<Response<List<User>>> getAll(HttpServletRequest request) {
+		if (!isLoggedIn(request)) {
+			return ResponseEntity.ok(
+						new Response<>(false, NOT_LOGGED_IN_MESSAGE, null)
+					);
+		}
+		List<User> all = new ArrayList<>();
+		userRepository.findAll().forEach(all::add);
+		
+		return ResponseEntity.ok(
+					new Response<>(true, null, all)
+				);
+		
+	}
 	
-	// @PostMapping("/login...
-	// (@RequestBody User... HttpServletRequest
-	// if(userRepository.existBy... ) request.getSession().setAttr...(USER_KEY, user..
-	// return ResponseEntit<Reposne<User .... 
+	
+	@PostMapping("/register")
+	public ResponseEntity<Response<User>> register(@RequestBody User user, HttpServletRequest request) {
+		String username = user.getUsername();
+		
+		return userRepository.findByUsername(username)
+				.map(byName -> ResponseEntity.ok(
+						new Response<>(
+								false, 
+								"User by the username: " + username + " already exists", 
+								user
+						)
+				)).orElseGet(() -> {
+					
+					User afterSave = userRepository.save(user);
+					request.getSession().setAttribute(USER_KEY, afterSave);
+					
+					return ResponseEntity.ok(
+						new Response<>(true, null, afterSave)	
+					);
+				});
+					
+	}
+	
 	
 	
 	@PostMapping("/login")
@@ -64,6 +102,8 @@ public class UserController {
 	}
 	
 	
+	
+	
 	// http://localhost:8080/user/get/1
 	@GetMapping("/get/{id}")
 	public ResponseEntity<Response<User>> byId(@PathVariable("id") Long id, HttpServletRequest request) {
@@ -76,7 +116,7 @@ public class UserController {
 						new Response<>(false, "No user by the id: " + id, null)
 				
 				)) : ResponseEntity.ok(
-						new Response<>(false, "Must be loggedin in order to continue", null)
+						new Response<>(false, NOT_LOGGED_IN_MESSAGE, null)
 				);
 	}
 }

@@ -10,6 +10,7 @@ import com.enosh.users.model.User;
 @Repository
 public interface UserRepository extends CrudRepository<User, Long>{
 	
-	boolean existsByUsernameAndPassword(String username, String password);
+	Optional<User> findByUsername(String username);
+	
 	Optional<User> findByUsernameAndPassword(String username, String password);
 }
